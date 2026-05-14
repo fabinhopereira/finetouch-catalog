@@ -525,48 +525,71 @@ function sendFavoritesList() {
     return;
   }
   var btn = document.getElementById('finish-btn');
-  btn.textContent = 'Processing...';
-  btn.disabled = true;
+  btn.textContent = 'Sending...'; btn.disabled = true;
 
-  // Build favorites list text for Formspree
   var keys = Object.keys(favs);
   var lines = keys.map(function(k,i){
     var f=favs[k];
-    return (i+1)+'. '+f.name+(f.room?' ('+f.room+')':'');
+    var room = f.room ? ' | Room: '+f.room : '';
+    var prods = (f.products||[]).map(function(p){return PL[p]||p;}).join(', ');
+    return (i+1)+'. '+f.name+' ['+prods+']'+room;
   });
 
-  // Send to Formspree (notifies you)
+  var message = 
+    'CLIENT NAME: '+clientName+'\n'+
+    'CLIENT EMAIL: '+email+'\n'+
+    'DATE: '+new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})+'\n'+
+    'TOTAL SELECTIONS: '+keys.length+'\n\n'+
+    '--- SELECTIONS ---\n'+
+    lines.join('\n')+
+    '\n\n--- END ---\n\n'+
+    'View in admin: https://finetouch-decor.github.io/finetouch-catalog/';
+
   fetch('https://formspree.io/f/xlgzkprg', {
     method: 'POST',
     headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
     body: JSON.stringify({
+      _replyto: email,
+      _subject: 'New Inspiration List — '+clientName+' ('+keys.length+' selections)',
+      message: message,
       client_name: clientName,
       client_email: email,
-      favorites: lines.join('\n'),
-      total: keys.length
+      selections: lines.join(' | ')
     })
-  }).then(function(r){ return r.json(); })
+  })
+  .then(function(r){ return r.json(); })
   .then(function(data){
-    // Show client their selection page
-    sessions[clientName] = {name: clientName, favs: favs, ts: Date.now()};
-    showClientDetail(clientName);
-    // Add print button to client detail page
-    var printBtn = document.createElement('button');
-    printBtn.textContent = '🖨 Save as PDF';
-    printBtn.style.cssText = 'position:fixed;bottom:1.5rem;left:1.5rem;z-index:999;background:var(--gold);border:none;border-radius:var(--rsm);padding:.75rem 1.25rem;font-family:Jost,sans-serif;font-size:.85rem;font-weight:500;color:var(--navy2);cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.3)';
-    printBtn.onclick = function(){ window.print(); };
-    document.body.appendChild(printBtn);
-    // Add print CSS
-    if(!document.getElementById('print-css')){
-      var style = document.createElement('style');
-      style.id = 'print-css';
-      style.textContent = '@media print{#s-entry,#s-app,#s-admin,#fov,#fpan,#rm-ov,.afloat,.btn-back,.btn-pdf,button{display:none!important}#s-client{display:block!important;background:#fff!important}.cd-name{color:#102A4B!important}.cd-meta{color:#666!important}.cd-card{border:1px solid #ddd!important;background:#fff!important}.cd-cname,.cd-cbody{color:#102A4B!important}.cd-croom{color:#C69E63!important}.tprod,.tcplx{background:#f0f0f0!important;color:#333!important}}';
-      document.head.appendChild(style);
+    if(data.ok || data.next) {
+      // Show client their selection page with photos
+      sessions[clientName] = {name: clientName, favs: favs, ts: Date.now()};
+      showClientDetail(clientName);
+      // Add print button
+      var old = document.getElementById('client-print-btn');
+      if(old) old.remove();
+      var printBtn = document.createElement('button');
+      printBtn.id = 'client-print-btn';
+      printBtn.innerHTML = '&#128247; Save as PDF';
+      printBtn.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);z-index:999;background:var(--gold);border:none;border-radius:var(--rsm);padding:.875rem 2rem;font-family:Jost,sans-serif;font-size:.9rem;font-weight:500;color:var(--navy2);cursor:pointer;box-shadow:0 4px 24px rgba(0,0,0,.4);white-space:nowrap';
+      printBtn.onclick = function(){ window.print(); };
+      document.body.appendChild(printBtn);
+      // Print CSS
+      if(!document.getElementById('print-css')){
+        var style = document.createElement('style');
+        style.id = 'print-css';
+        style.textContent = '@media print{body *{visibility:hidden}#s-client,#s-client *{visibility:visible}#s-client{position:absolute;top:0;left:0;width:100%;background:#fff!important}#client-print-btn,.btn-back,.btn-pdf{display:none!important}.cd-name,.cd-cname{color:#102A4B!important}.cd-meta,.cd-cbody *{color:#333!important}.cd-croom{color:#C69E63!important}}';
+        document.head.appendChild(style);
+      }
+    } else {
+      throw new Error(JSON.stringify(data));
     }
-  }).catch(function(){
-    // Even if formspree fails, still show client their selections
+  })
+  .catch(function(err){
+    console.error('Formspree error:', err);
+    // Still show selections even if email fails
     sessions[clientName] = {name: clientName, favs: favs, ts: Date.now()};
     showClientDetail(clientName);
+    btn.textContent = 'Finalize & View My Selections \u2192';
+    btn.disabled = false;
   });
 }
 
