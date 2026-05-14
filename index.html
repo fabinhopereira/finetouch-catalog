@@ -277,13 +277,13 @@ body{font-family:'Jost',sans-serif;background:var(--navy);color:var(--cream);min
   <div style="position:relative;max-width:560px;margin:0 auto">
     <div style="font-size:2rem;margin-bottom:.5rem">✨</div>
     <h2 style="font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:300;color:var(--cream2);margin-bottom:.75rem">Love your selections?</h2>
-    <p style="font-size:.9rem;color:var(--muted2);line-height:1.8;margin-bottom:.5rem;font-weight:300">You have <strong id="finish-count" style="color:var(--gold)">0</strong> inspiration(s) saved.<br>Enter your email and we'll send you a summary — and our team will reach out to bring your vision to life!</p>
+    <p style="font-size:.9rem;color:var(--muted2);line-height:1.8;margin-bottom:.5rem;font-weight:300">You have <strong id="finish-count" style="color:var(--gold)">0</strong> inspiration(s) saved.<br>Enter your email and view your complete inspiration board with photos — ready to save as PDF. Our team will also receive your selections!</p>
     <div style="display:flex;flex-direction:column;gap:.75rem;margin-top:1.75rem;align-items:center">
       <input id="finish-email" type="email" placeholder="Your email address" style="width:100%;max-width:380px;padding:.9rem 1.25rem;background:var(--navy2);border:1px solid var(--border2);border-radius:var(--rsm);font-family:'Jost',sans-serif;font-size:.9rem;color:var(--cream2);outline:none;transition:border-color .2s;text-align:center" onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border2)'">
       <button id="finish-btn" onclick="sendFavoritesList()" style="width:100%;max-width:380px;padding:1rem 2rem;background:var(--gold);border:none;border-radius:var(--rsm);font-family:'Jost',sans-serif;font-size:.9rem;font-weight:500;color:var(--navy2);cursor:pointer;transition:all .2s;letter-spacing:.05em">
-        Send my inspiration list to Fine Touch &#8594;
+        Finalize &amp; View My Selections &#8594;
       </button>
-      <p style="font-size:.7rem;color:var(--muted);margin-top:.25rem">We'll reply within 24 hours with a personalized quote.</p>
+      <p style="font-size:.7rem;color:var(--muted);margin-top:.25rem">You'll see all your selections with photos — save as PDF or screenshot to keep!</p>
     </div>
   </div>
 </div>
@@ -524,25 +524,50 @@ function sendFavoritesList() {
     document.getElementById('finish-email').focus();
     return;
   }
+  var btn = document.getElementById('finish-btn');
+  btn.textContent = 'Processing...';
+  btn.disabled = true;
+
+  // Build favorites list text for Formspree
   var keys = Object.keys(favs);
   var lines = keys.map(function(k,i){
     var f=favs[k];
     return (i+1)+'. '+f.name+(f.room?' ('+f.room+')':'');
   });
-  var subject = encodeURIComponent('Fine Touch Inspiration List — '+clientName);
-  var body = encodeURIComponent(
-    'Hi Fine Touch team!\n\n'+
-    'My name is '+clientName+' and here are my inspiration selections:\n\n'+
-    lines.join('\n')+
-    '\n\nPlease reach out to discuss next steps.\n\n'+
-    'My email: '+email
-  );
-  var mailto = 'mailto:contact@ftdecordesign.com?subject='+subject+'&body='+body+'&cc='+encodeURIComponent(email);
-  window.location.href = mailto;
-  var btn = document.getElementById('finish-btn');
-  btn.textContent = '\u2713 Email app opened! Please hit Send.';
-  btn.style.background = '#5A9A5A';
-  document.getElementById('finish-email').disabled = true;
+
+  // Send to Formspree (notifies you)
+  fetch('https://formspree.io/f/xlgzkprg', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+    body: JSON.stringify({
+      client_name: clientName,
+      client_email: email,
+      favorites: lines.join('\n'),
+      total: keys.length
+    })
+  }).then(function(r){ return r.json(); })
+  .then(function(data){
+    // Show client their selection page
+    sessions[clientName] = {name: clientName, favs: favs, ts: Date.now()};
+    showClientDetail(clientName);
+    // Add print button to client detail page
+    var printBtn = document.createElement('button');
+    printBtn.textContent = '🖨 Save as PDF';
+    printBtn.style.cssText = 'position:fixed;bottom:1.5rem;left:1.5rem;z-index:999;background:var(--gold);border:none;border-radius:var(--rsm);padding:.75rem 1.25rem;font-family:Jost,sans-serif;font-size:.85rem;font-weight:500;color:var(--navy2);cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.3)';
+    printBtn.onclick = function(){ window.print(); };
+    document.body.appendChild(printBtn);
+    // Add print CSS
+    if(!document.getElementById('print-css')){
+      var style = document.createElement('style');
+      style.id = 'print-css';
+      style.textContent = '@media print{#s-entry,#s-app,#s-admin,#fov,#fpan,#rm-ov,.afloat,.btn-back,.btn-pdf,button{display:none!important}#s-client{display:block!important;background:#fff!important}.cd-name{color:#102A4B!important}.cd-meta{color:#666!important}.cd-card{border:1px solid #ddd!important;background:#fff!important}.cd-cname,.cd-cbody{color:#102A4B!important}.cd-croom{color:#C69E63!important}.tprod,.tcplx{background:#f0f0f0!important;color:#333!important}}';
+      document.head.appendChild(style);
+    }
+  }).catch(function(){
+    // Even if formspree fails, still show client their selections
+    sessions[clientName] = {name: clientName, favs: favs, ts: Date.now()};
+    showClientDetail(clientName);
+  });
 }
 
 // ─── CLOUD ───
