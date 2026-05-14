@@ -524,58 +524,25 @@ function sendFavoritesList() {
     document.getElementById('finish-email').focus();
     return;
   }
-  var btn = document.getElementById('finish-btn');
-  btn.textContent = 'Sending...'; btn.disabled = true;
   var keys = Object.keys(favs);
   var lines = keys.map(function(k,i){
     var f=favs[k];
-    return (i+1)+'. '+f.name+(f.room?' — Room: '+f.room:'');
+    return (i+1)+'. '+f.name+(f.room?' ('+f.room+')':'');
   });
-  var params = {
-    client_name: clientName,
-    client_email: email,
-    favorites_list: lines.join('\n'),
-    to_email: email
-  };
-  var attempts = 0;
-  function doSend() {
-    attempts++;
-    if(typeof emailjs === 'undefined') {
-      if(attempts > 10) {
-        btn.textContent = 'Send my inspiration list to Fine Touch \u2192';
-        btn.disabled = false;
-        alert('Email service failed to load. Please refresh the page and try again.');
-        return;
-      }
-      setTimeout(doSend, 500);
-      return;
-    }
-    // Set a timeout in case emailjs hangs
-    var sent = false;
-    var timeout = setTimeout(function(){
-      if(!sent){
-        btn.textContent = 'Send my inspiration list to Fine Touch \u2192';
-        btn.disabled = false;
-        alert('Request timed out. Please check your connection and try again.');
-      }
-    }, 10000);
-    emailjs.send('service_9pjcqof','template_8r8b3yc', params)
-      .then(function(){
-        sent = true;
-        clearTimeout(timeout);
-        btn.textContent = '\u2713 Sent! We will contact you soon.';
-        btn.style.background = '#5A9A5A';
-        document.getElementById('finish-email').disabled = true;
-      }, function(err){
-        sent = true;
-        clearTimeout(timeout);
-        console.error('EmailJS error:', JSON.stringify(err));
-        btn.textContent = 'Send my inspiration list to Fine Touch \u2192';
-        btn.disabled = false;
-        alert('Error: '+(err.text||err.message||JSON.stringify(err))+'. Please try again.');
-      });
-  }
-  doSend();
+  var subject = encodeURIComponent('Fine Touch Inspiration List — '+clientName);
+  var body = encodeURIComponent(
+    'Hi Fine Touch team!\n\n'+
+    'My name is '+clientName+' and here are my inspiration selections:\n\n'+
+    lines.join('\n')+
+    '\n\nPlease reach out to discuss next steps.\n\n'+
+    'My email: '+email
+  );
+  var mailto = 'mailto:contact@ftdecordesign.com?subject='+subject+'&body='+body+'&cc='+encodeURIComponent(email);
+  window.location.href = mailto;
+  var btn = document.getElementById('finish-btn');
+  btn.textContent = '\u2713 Email app opened! Please hit Send.';
+  btn.style.background = '#5A9A5A';
+  document.getElementById('finish-email').disabled = true;
 }
 
 // ─── CLOUD ───
