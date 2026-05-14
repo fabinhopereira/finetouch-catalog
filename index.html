@@ -297,8 +297,8 @@ body{font-family:'Jost',sans-serif;background:var(--navy);color:var(--cream);min
   </div>
   <div class="fp-body" id="fpbody"></div>
   <div class="fp-foot">
-    <div class="fp-hint">Done? Copy your list and send it to us.</div>
-    <button class="btn-copy" id="btn-copy" disabled>Copy my favorites list &#8594;</button>
+    <div class="fp-hint">Done? Send your list to your email!</div>
+    <button class="btn-copy" id="btn-copy" disabled>Send my favorites list &#8594;</button>
   </div>
 </div>
 
@@ -706,15 +706,36 @@ document.getElementById('fpbody').addEventListener('click', function(e) {
   if(b) toggleFav(b.dataset.rm);
 });
 document.getElementById('btn-copy').addEventListener('click', function() {
+  var email = prompt('Enter your email address to receive your favorites list:');
+  if(email === null) return;
+  if(!email || !email.includes('@')) { alert('Please enter a valid email address.'); return; }
+  var btn = document.getElementById('btn-copy');
+  btn.textContent = 'Sending...'; btn.disabled = true;
   var keys = Object.keys(favs);
-  var lines = keys.map(function(k){ var f=favs[k]; return '- '+f.name+(f.room?' ('+f.room+')':''); });
-  var msg = 'Hi! My name is '+clientName+' and here are my Fine Touch favorites:\n\n'+lines.join('\n')+'\n\nLooking forward to discussing these!';
-  navigator.clipboard.writeText(msg).then(function(){
-    var btn = document.getElementById('btn-copy');
-    var orig = btn.textContent;
-    btn.textContent = 'Copied! \u2713';
-    setTimeout(function(){ btn.textContent = orig; }, 2500);
-  }).catch(function(){ prompt('Copy this message:', msg); });
+  var lines = keys.map(function(k,i){
+    var f=favs[k];
+    return (i+1)+'. '+f.name+(f.room?' — Room: '+f.room:'');
+  });
+  var params = {
+    client_name: clientName,
+    client_email: email,
+    favorites_list: lines.join('\n'),
+    to_email: email
+  };
+  if(typeof emailjs !== 'undefined') {
+    emailjs.send('service_9pjcqof','template_8r8b3yc', params)
+      .then(function(){
+        btn.textContent = 'Sent! Check your email ✓';
+        setTimeout(function(){ btn.textContent = 'Send my favorites list \u2192'; btn.disabled=false; }, 4000);
+      }, function(err){
+        console.error('EmailJS:',err);
+        btn.textContent = 'Send my favorites list \u2192'; btn.disabled=false;
+        alert('Could not send. Please try again.');
+      });
+  } else {
+    btn.textContent = 'Send my favorites list \u2192'; btn.disabled=false;
+    alert('Email service not loaded. Refresh and try again.');
+  }
 });
 
 // ─── ADMIN ───
