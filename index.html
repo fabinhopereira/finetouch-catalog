@@ -204,6 +204,8 @@ body{font-family:'Jost',sans-serif;background:var(--navy);color:var(--cream);min
 .cd-croom{font-size:.78rem;color:var(--gold);font-style:italic;margin-bottom:.5rem}
 .cd-ctags{display:flex;flex-wrap:wrap;gap:.3rem}
 
+#finish-btn:hover{opacity:.88;transform:translateY(-1px)}
+#finish-email::placeholder{color:var(--muted)}
 @media(max-width:600px){
   .hdr{padding:0 1rem}.hdr-greet{display:none}
   .hero{padding:2rem 1rem 1rem}.pnav{padding:1.5rem 1rem 0}.cbar{padding:.75rem 1rem 0}
@@ -268,6 +270,23 @@ body{font-family:'Jost',sans-serif;background:var(--navy);color:var(--cream);min
   <div class="rinfo" id="rinfo"></div>
   <div class="gal" id="gal"></div>
   <div class="afloat"><button class="afbtn" id="btn-adm">Admin panel &#8599;</button></div>
+
+<!-- FINISH SECTION -->
+<div id="finish-section" style="display:none;padding:3rem 2rem;background:linear-gradient(135deg,var(--navy2) 0%,var(--navy3) 100%);border-top:1px solid var(--border2);text-align:center;position:relative;overflow:hidden">
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 50% 100%,rgba(198,158,99,0.12) 0%,transparent 70%);pointer-events:none"></div>
+  <div style="position:relative;max-width:560px;margin:0 auto">
+    <div style="font-size:2rem;margin-bottom:.5rem">✨</div>
+    <h2 style="font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:300;color:var(--cream2);margin-bottom:.75rem">Love your selections?</h2>
+    <p style="font-size:.9rem;color:var(--muted2);line-height:1.8;margin-bottom:.5rem;font-weight:300">You have <strong id="finish-count" style="color:var(--gold)">0</strong> inspiration(s) saved.<br>Enter your email and we'll send you a summary — and our team will reach out to bring your vision to life!</p>
+    <div style="display:flex;flex-direction:column;gap:.75rem;margin-top:1.75rem;align-items:center">
+      <input id="finish-email" type="email" placeholder="Your email address" style="width:100%;max-width:380px;padding:.9rem 1.25rem;background:var(--navy2);border:1px solid var(--border2);border-radius:var(--rsm);font-family:'Jost',sans-serif;font-size:.9rem;color:var(--cream2);outline:none;transition:border-color .2s;text-align:center" onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border2)'">
+      <button id="finish-btn" onclick="sendFavoritesList()" style="width:100%;max-width:380px;padding:1rem 2rem;background:var(--gold);border:none;border-radius:var(--rsm);font-family:'Jost',sans-serif;font-size:.9rem;font-weight:500;color:var(--navy2);cursor:pointer;transition:all .2s;letter-spacing:.05em">
+        Send my inspiration list to Fine Touch &#8594;
+      </button>
+      <p style="font-size:.7rem;color:var(--muted);margin-top:.25rem">We'll reply within 24 hours with a personalized quote.</p>
+    </div>
+  </div>
+</div>
 </div>
 
 <!-- ══ ROOM MODAL ══ -->
@@ -491,6 +510,48 @@ function updatePill() {
   p.style.display = n ? 'inline-block' : 'none';
   var bc = document.getElementById('btn-copy');
   if(bc) bc.disabled = (n === 0);
+  // Show/hide finish section
+  var fs = document.getElementById('finish-section');
+  var fc = document.getElementById('finish-count');
+  if(fs) fs.style.display = n > 0 ? 'block' : 'none';
+  if(fc) fc.textContent = n;
+}
+
+function sendFavoritesList() {
+  var email = document.getElementById('finish-email').value.trim();
+  if(!email || !email.includes('@')) {
+    alert('Please enter a valid email address.');
+    document.getElementById('finish-email').focus();
+    return;
+  }
+  var btn = document.getElementById('finish-btn');
+  btn.textContent = 'Sending...'; btn.disabled = true;
+  var keys = Object.keys(favs);
+  var lines = keys.map(function(k,i){
+    var f=favs[k];
+    return (i+1)+'. '+f.name+(f.room?' — Room: '+f.room:'');
+  });
+  var params = {
+    client_name: clientName,
+    client_email: email,
+    favorites_list: lines.join('\n'),
+    to_email: email
+  };
+  function doSend() {
+    if(typeof emailjs === 'undefined') { setTimeout(doSend, 300); return; }
+    emailjs.send('service_9pjcqof','template_8r8b3yc', params)
+      .then(function(){
+        btn.textContent = '✓ Sent! We will contact you soon.';
+        btn.style.background = '#5A9A5A';
+        document.getElementById('finish-email').disabled = true;
+      }, function(err){
+        console.error('EmailJS:',err);
+        btn.textContent = 'Send my inspiration list to Fine Touch →';
+        btn.disabled = false;
+        alert('Could not send. Please try again.');
+      });
+  }
+  doSend();
 }
 
 // ─── CLOUD ───
