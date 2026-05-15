@@ -486,8 +486,8 @@ var activeProd = 'all';
 var activeCplx = 'all';
 var pendingId = null;
 var currentClient = null;
-var JBBIN = '';
-try { var _b = localStorage.getItem('ft_bin'); if(_b) JBBIN = _b; } catch(e) {}
+var JBBIN = '6a0671feadc21f119aa0b7a2';
+try { localStorage.setItem('ft_bin', JBBIN); } catch(e) {}
 
 // ─── HELPERS ───
 function imgSrc(key) {
